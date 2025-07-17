@@ -1,0 +1,17 @@
+[package]
+name = "bt-notsports"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+fs2 = "0.4.3"
+futures = "0.3.31"
+image = { version = "0.25.6", default-features = false, features = ["png"] }
+ksni = "0.3.1"
+log = "0.4.27"
+signal-hook = "0.3.18"
+signal-hook-tokio = "0.3.1"
+simplelog = "0.12.2"
+tokio = "1.46.1"
+zbus = "5.9.0"
