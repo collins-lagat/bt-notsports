@@ -1,11 +1,13 @@
 mod app;
+mod tray;
 
 use std::{fs::File, panic, path::Path};
 
 use anyhow::{Result, bail};
-use app::{Action, Event};
+use app::{Action, App, Event};
 use fs2::FileExt;
 use futures::StreamExt;
+use ksni::TrayMethods;
 use log::{LevelFilter, error, info, warn};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
@@ -14,6 +16,7 @@ use tokio::{
     fs,
     sync::mpsc::{Sender, channel},
 };
+use tray::Tray;
 use zbus::{Connection, Proxy};
 
 pub const APP_ID: &str = "com.collinslagat.applets.bt-notsports";
@@ -63,6 +66,18 @@ async fn main() -> Result<()> {
     let handle = signals.handle();
 
     let signals_task = tokio::spawn(handle_signals(signals, event_tx.clone()));
+
+    let tray = Tray::new(action_tx.clone());
+
+    if let Err(e) = tray.spawn().await {
+        error!("Failed to spawn tray: {}", e);
+    }
+
+    let app = App::new(event_tx);
+
+    app.send_event(Event::Update).await?;
+
+    app.run(event_rx, action_rx).await?;
 
     info!("Cleaning up");
 
