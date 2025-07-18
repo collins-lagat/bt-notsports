@@ -79,7 +79,7 @@ impl ksni::Tray for Tray {
 
         menu.push(
             CheckmarkItem {
-                label: "On".to_string(),
+                label: "Bluetooth".to_string(),
                 checked: self.state.on,
                 activate: Box::new(|this: &mut Self| {
                     this.send_action(Action::ToggleBluetooth).unwrap();
@@ -97,6 +97,17 @@ impl ksni::Tray for Tray {
                 activate: Box::new(|this: &mut Self| {
                     this.send_action(Action::Scan).unwrap();
                 }),
+                ..Default::default()
+            }
+            .into(),
+        );
+
+        menu.push(MenuItem::Separator);
+
+        menu.push(
+            StandardItem {
+                label: "Devices".to_string(),
+                enabled: false,
                 ..Default::default()
             }
             .into(),
