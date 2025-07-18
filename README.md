@@ -1,6 +1,6 @@
 # BT-NotSports
 
-A simple bluetooth applet for Linux
+A simple Bluetooth applet for Linux
 
 ## Installation
 
@@ -15,3 +15,7 @@ cargo build --release
 ```bash
 mv target/release/bt-notsports ~/.local/bin
 ```
+
+## Acknowledgements
+
+This applet borrows a lot from [cosmic-applet-bluetooth](https://github.com/pop-os/cosmic-applets/tree/c539b0628be7ea66feb3840fdca60c9e59bf3c75/cosmic-applet-bluetooth)
