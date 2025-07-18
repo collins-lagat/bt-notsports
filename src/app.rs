@@ -2,11 +2,15 @@ use anyhow::Result;
 use log::info;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::{bluetooth::Action, tray::TrayEvent};
+use crate::{
+    bluetooth::{Action, BTState},
+    tray::TrayEvent,
+};
 
 #[derive(Debug)]
 pub enum AppEvent {
     Request(Action),
+    Response(BTState),
     Shutdown,
 }
 
@@ -29,6 +33,9 @@ impl App {
         while let Some(event) = self.rx.recv().await {
             match event {
                 AppEvent::Request(action) => {
+                    info!("Updating tray");
+                }
+                AppEvent::Response(state) => {
                     info!("Updating tray");
                 }
                 AppEvent::Shutdown => break,
