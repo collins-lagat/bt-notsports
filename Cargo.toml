@@ -11,7 +11,7 @@ image = { version = "0.25.6", default-features = false, features = ["png"] }
 ksni = "0.3.1"
 log = "0.4.27"
 signal-hook = "0.3.18"
-signal-hook-tokio = "0.3.1"
+signal-hook-tokio = { version = "0.3.1", features = ["futures-v0_3"] }
 simplelog = "0.12.2"
-tokio = "1.46.1"
-zbus = "5.9.0"
+tokio = { version = "1.46.1", features = ["rt", "macros", "sync", "time"] }
+zbus = { version = "5.9.0", default-features = false, features = ["tokio"] }
