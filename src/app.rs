@@ -1,5 +1,4 @@
 use anyhow::Result;
-use log::info;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::{
@@ -33,10 +32,10 @@ impl App {
         while let Some(event) = self.rx.recv().await {
             match event {
                 AppEvent::Request(action) => {
-                    info!("Updating tray");
+                    bt_tx.send(action).await?;
                 }
                 AppEvent::Response(state) => {
-                    info!("Updating tray");
+                    tray_tx.send(TrayEvent::Update(state)).await?;
                 }
                 AppEvent::Shutdown => break,
             }
