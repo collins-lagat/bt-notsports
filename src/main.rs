@@ -1,22 +1,20 @@
 mod app;
+mod bluetooth;
 mod tray;
 
 use std::{fs::File, panic, path::Path};
 
 use anyhow::{Result, bail};
-use app::{Action, App, Event};
+use app::{App, AppEvent};
+use bluetooth::init_bluetooth;
 use fs2::FileExt;
 use futures::StreamExt;
-use ksni::TrayMethods;
 use log::{LevelFilter, error, info, warn};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode, WriteLogger};
-use tokio::{
-    fs,
-    sync::mpsc::{Sender, channel},
-};
-use tray::Tray;
+use tokio::{fs, sync::mpsc::Sender};
+use tray::init_tray;
 use zbus::{Connection, Proxy};
 
 pub const APP_ID: &str = "com.collinslagat.applets.bt-notsports";
@@ -58,26 +56,24 @@ async fn main() -> Result<()> {
 
     wait_for_session_bus_and_status_notifier().await?;
 
-    let (event_tx, event_rx) = channel::<Event>(32);
-    let (action_tx, action_rx) = channel::<Action>(32);
+    let mut app = App::new();
 
     let signals = Signals::new([SIGINT, SIGTERM]).unwrap();
 
     let handle = signals.handle();
 
-    let signals_task = tokio::spawn(handle_signals(signals, event_tx.clone()));
+    let signals_task = tokio::spawn(handle_signals(signals, app.get_sender()));
 
-    let tray = Tray::new(action_tx.clone());
+    let tray_tx = init_tray(app.get_sender()).await?;
 
-    if let Err(e) = tray.spawn().await {
-        error!("Failed to spawn tray: {}", e);
-    }
+    let bt_tx = match init_bluetooth(app.get_sender()).await {
+        Ok(tx) => tx,
+        Err(e) => {
+            anyhow::bail!("Failed to initialize bluetooth: {}", e);
+        }
+    };
 
-    let app = App::new(event_tx);
-
-    app.send_event(Event::Update).await?;
-
-    app.run(event_rx, action_rx).await?;
+    app.run(tray_tx, bt_tx).await?;
 
     info!("Cleaning up");
 
@@ -91,12 +87,12 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn handle_signals(mut signals: Signals, tx: Sender<Event>) {
+async fn handle_signals(mut signals: Signals, tx: Sender<AppEvent>) {
     while let Some(signal) = signals.next().await {
         match signal {
             SIGTERM | SIGINT => {
                 info!("Received signal {}", signal);
-                let _ = tx.send(Event::Shutdown).await;
+                let _ = tx.send(AppEvent::Shutdown).await;
             }
             _ => unreachable!(),
         }

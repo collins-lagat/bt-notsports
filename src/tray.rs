@@ -3,40 +3,47 @@ use std::sync::LazyLock;
 use anyhow::Result;
 use image::GenericImageView;
 use ksni::{
-    MenuItem,
+    MenuItem, TrayMethods,
     menu::{CheckmarkItem, StandardItem},
 };
 use log::error;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, channel};
 
-use crate::{APP_ID, app::Action};
+use crate::{
+    APP_ID,
+    app::AppEvent,
+    bluetooth::{Action, BTState},
+};
 
-#[derive(Clone, Debug)]
-pub struct Device {
-    name: String,
-    on: bool,
+#[derive(Debug)]
+pub enum TrayEvent {
+    Update(BTState),
 }
+
+#[derive(Debug)]
 pub struct Tray {
-    action_tx: Sender<Action>,
-    on: bool,
-    devices: Vec<Device>,
+    app_tx: Sender<AppEvent>,
+    state: BTState,
 }
 
 impl Tray {
-    pub fn new(action_tx: Sender<Action>) -> Tray {
+    pub fn new(app_tx: Sender<AppEvent>) -> Tray {
         Tray {
-            on: false,
-            devices: Vec::new(),
-            action_tx,
+            app_tx,
+            state: BTState::default(),
         }
+    }
+
+    pub fn update(&mut self, state: BTState) {
+        self.state = state;
     }
 
     fn send_action(&self, action: Action) -> Result<()> {
         let handle = tokio::runtime::Handle::current();
 
-        let tx = self.action_tx.clone();
+        let tx = self.app_tx.clone();
         handle.spawn(async move {
-            if let Err(e) = tx.send(action).await {
+            if let Err(e) = tx.send(AppEvent::Request(action)).await {
                 error!("Tray: Failed to send action: {}", e);
             }
         });
@@ -58,7 +65,7 @@ impl ksni::Tray for Tray {
         static OFF_ICON: LazyLock<ksni::Icon> =
             LazyLock::new(|| get_icon_from_image_bytes(include_bytes!("../assets/off.png")));
 
-        if self.on {
+        if self.state.on {
             icons.push(ON_ICON.clone());
         } else {
             icons.push(OFF_ICON.clone());
@@ -73,7 +80,7 @@ impl ksni::Tray for Tray {
         menu.push(
             CheckmarkItem {
                 label: "On".to_string(),
-                checked: self.on,
+                checked: self.state.on,
                 activate: Box::new(|this: &mut Self| {
                     this.send_action(Action::ToggleBluetooth).unwrap();
                 }),
@@ -97,12 +104,12 @@ impl ksni::Tray for Tray {
 
         menu.push(MenuItem::Separator);
 
-        for device in &self.devices {
+        for device in &self.state.devices {
             let local_device = device.clone();
             menu.push(
                 CheckmarkItem {
                     label: device.name.clone(),
-                    checked: device.on,
+                    checked: device.is_on(),
                     activate: Box::new(move |this: &mut Self| {
                         this.send_action(Action::ToggleDevice(local_device.clone()))
                             .unwrap();
@@ -113,7 +120,7 @@ impl ksni::Tray for Tray {
             );
         }
 
-        if self.devices.is_empty() {
+        if self.state.devices.is_empty() {
             menu.push(
                 StandardItem {
                     label: "No devices found".to_string(),
@@ -142,4 +149,33 @@ fn get_icon_from_image_bytes(image_bytes: &[u8]) -> ksni::Icon {
         height: height as i32,
         data,
     }
+}
+
+pub async fn init_tray(app_tx: Sender<AppEvent>) -> Result<Sender<TrayEvent>> {
+    let tray = Tray::new(app_tx);
+    let handle = match tray.spawn().await {
+        Ok(handle) => handle,
+        Err(e) => {
+            anyhow::bail!("Failed to spawn tray: {}", e);
+        }
+    };
+
+    let (tx, mut rx) = channel::<TrayEvent>(32);
+
+    let tokio_handle = tokio::runtime::Handle::current();
+    tokio_handle.spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                TrayEvent::Update(state) => {
+                    handle
+                        .update(|tray| {
+                            tray.update(state);
+                        })
+                        .await;
+                }
+            };
+        }
+    });
+
+    Ok(tx)
 }

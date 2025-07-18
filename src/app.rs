@@ -1,58 +1,37 @@
 use anyhow::Result;
 use log::info;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::tray::Device;
+use crate::{bluetooth::Action, tray::TrayEvent};
 
-#[derive(Debug, Clone)]
-pub enum Event {
-    Update,
+#[derive(Debug)]
+pub enum AppEvent {
+    Request(Action),
     Shutdown,
 }
 
-#[derive(Debug, Clone)]
-pub enum Action {
-    ToggleBluetooth,
-    ToggleDevice(Device),
-    Scan,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct App {
-    event_tx: Sender<Event>,
+    tx: Sender<AppEvent>,
+    rx: Receiver<AppEvent>,
 }
 impl App {
-    pub fn new(event_tx: Sender<Event>) -> Self {
-        Self { event_tx }
+    pub fn new() -> Self {
+        let (tx, rx) = channel::<AppEvent>(32);
+        Self { tx, rx }
     }
 
-    pub async fn send_event(&self, event: Event) -> Result<()> {
-        self.event_tx.send(event).await?;
-        Ok(())
+    pub fn get_sender(&self) -> Sender<AppEvent> {
+        self.tx.clone()
     }
 
-    pub async fn run(
-        &self,
-        mut event_rx: Receiver<Event>,
-        mut action_rx: Receiver<Action>,
-    ) -> anyhow::Result<()> {
-        let _app = self.clone();
-        tokio::spawn(async move {
-            while let Some(action) = action_rx.recv().await {
-                match action {
-                    Action::ToggleBluetooth => todo!(),
-                    Action::ToggleDevice(device) => todo!(),
-                    Action::Scan => todo!(),
-                }
-            }
-        });
-
-        while let Some(event) = event_rx.recv().await {
+    pub async fn run(&mut self, tray_tx: Sender<TrayEvent>, bt_tx: Sender<Action>) -> Result<()> {
+        while let Some(event) = self.rx.recv().await {
             match event {
-                Event::Update => {
+                AppEvent::Request(action) => {
                     info!("Updating tray");
                 }
-                Event::Shutdown => break,
+                AppEvent::Shutdown => break,
             }
         }
 
