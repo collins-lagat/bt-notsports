@@ -28,11 +28,8 @@ pub enum BTEvent {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BTDeviceStatus {
     Paired,
-    Pairing,
     Connected,
-    Connecting,
     Disconnected,
-    Disconnecting,
 }
 
 #[derive(Debug, Clone)]
