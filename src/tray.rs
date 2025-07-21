@@ -91,20 +91,22 @@ impl ksni::Tray for Tray {
 
         menu.push(MenuItem::Separator);
 
-        let mut device_submenu = Vec::<MenuItem<Tray>>::with_capacity(self.state.devices.len());
+        let mut device_list = Vec::<MenuItem<Tray>>::with_capacity(
+            self.state.paired_devices.len() + self.state.available_devices.len(),
+        );
 
-        device_submenu.push(
+        device_list.push(
             StandardItem {
-                label: "Devices".to_string(),
+                label: "My Devices".to_string(),
                 enabled: false,
                 ..Default::default()
             }
             .into(),
         );
 
-        device_submenu.push(MenuItem::Separator);
+        device_list.push(MenuItem::Separator);
 
-        for device in &self.state.devices {
+        for device in &self.state.paired_devices {
             let local_device = device.clone();
             let mut name = device.name.clone();
 
@@ -112,7 +114,7 @@ impl ksni::Tray for Tray {
                 name = format!("{} ({})%", name, percentage);
             }
 
-            device_submenu.push(
+            device_list.push(
                 CheckmarkItem {
                     label: name,
                     checked: device.is_on(),
@@ -126,8 +128,8 @@ impl ksni::Tray for Tray {
             );
         }
 
-        if self.state.devices.is_empty() {
-            menu.push(
+        if self.state.paired_devices.is_empty() {
+            device_list.push(
                 StandardItem {
                     label: "No devices found".to_string(),
                     enabled: false,
@@ -135,16 +137,50 @@ impl ksni::Tray for Tray {
                 }
                 .into(),
             );
-        } else {
-            menu.push(
-                SubMenu {
-                    label: "Devices".to_string(),
-                    submenu: device_submenu,
+        }
+
+        device_list.push(MenuItem::Separator);
+
+        device_list.push(
+            StandardItem {
+                label: "Available Devices".to_string(),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
+        );
+
+        device_list.push(MenuItem::Separator);
+
+        for device in &self.state.available_devices {
+            device_list.push(
+                StandardItem {
+                    label: device.name.clone(),
                     ..Default::default()
                 }
                 .into(),
             );
         }
+
+        if self.state.available_devices.is_empty() {
+            device_list.push(
+                StandardItem {
+                    label: "No devices found".to_string(),
+                    enabled: false,
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+
+        menu.push(
+            SubMenu {
+                label: "Devices".to_string(),
+                submenu: device_list,
+                ..Default::default()
+            }
+            .into(),
+        );
 
         menu
     }

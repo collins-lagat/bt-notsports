@@ -38,6 +38,7 @@ pub struct BTDevice {
     pub address: Address,
     pub status: BTDeviceStatus,
     pub battery_percentage: Option<u8>,
+    pub is_paired: bool,
 }
 
 impl BTDevice {
@@ -73,6 +74,7 @@ impl BTDevice {
             address: device.address(),
             status,
             battery_percentage,
+            is_paired,
         }
     }
 }
@@ -103,7 +105,8 @@ impl PartialEq for BTDevice {
 #[derive(Debug, Clone, Default)]
 pub struct BTState {
     pub on: bool,
-    pub devices: Vec<BTDevice>,
+    pub paired_devices: Vec<BTDevice>,
+    pub available_devices: Vec<BTDevice>,
 }
 
 async fn toggle_bluetooth(adapter: &Adapter, on: bool) {
@@ -336,7 +339,22 @@ async fn build_state(adapter: &Adapter) -> Result<BTState> {
         devices.push(device)
     }
 
-    devices.sort();
+    let mut paired_devices = devices
+        .clone()
+        .into_iter()
+        .filter(|device| device.is_paired)
+        .collect::<Vec<BTDevice>>();
+    let mut available_devices = devices
+        .into_iter()
+        .filter(|device| !device.is_paired)
+        .collect::<Vec<BTDevice>>();
 
-    Ok(BTState { on, devices })
+    paired_devices.sort();
+    available_devices.sort();
+
+    Ok(BTState {
+        on,
+        paired_devices,
+        available_devices,
+    })
 }
