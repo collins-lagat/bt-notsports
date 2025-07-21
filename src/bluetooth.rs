@@ -165,7 +165,24 @@ async fn toggle_bluetooth(adapter: &Adapter, on: bool) {
     tokio::time::sleep(Duration::from_millis(100)).await;
 }
 
-async fn toggle_device(state: &mut BTState, app_tx: &Sender<AppEvent>, device: BTDevice) {}
+async fn toggle_device(adapter: &Adapter, address: &Address, on: bool) {
+    let device = match adapter.device(*address) {
+        Ok(device) => device,
+        Err(e) => {
+            error!("Failed to get bluetooth device. {e:?}");
+            return;
+        }
+    };
+    let res = if on {
+        device.disconnect().await
+    } else {
+        device.connect().await
+    };
+
+    if let Err(e) = res {
+        error!("Failed to set bluetooth device state. {e:?}");
+    }
+}
 
 async fn scan_for_devices(state: &mut BTState, app_tx: &Sender<AppEvent>) {}
 
@@ -251,7 +268,7 @@ pub async fn init_bluetooth(app_tx: Sender<AppEvent>) -> Result<Sender<BTEvent>>
                             });
                         }
                         Action::ToggleDevice(device) => {
-                            toggle_device(&mut state, &app_tx, device).await
+                            toggle_device(&adapter, &device.address, device.is_on()).await
                         }
                         Action::Scan => scan_for_devices(&mut state, &app_tx).await,
                     }
