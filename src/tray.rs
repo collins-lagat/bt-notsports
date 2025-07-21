@@ -4,7 +4,7 @@ use anyhow::Result;
 use image::GenericImageView;
 use ksni::{
     MenuItem, TrayMethods,
-    menu::{CheckmarkItem, StandardItem},
+    menu::{CheckmarkItem, StandardItem, SubMenu},
 };
 use log::error;
 use tokio::sync::mpsc::{Sender, channel};
@@ -91,9 +91,9 @@ impl ksni::Tray for Tray {
 
         menu.push(MenuItem::Separator);
 
+        let mut device_submenu = Vec::<MenuItem<Tray>>::with_capacity(self.state.devices.len());
 
-
-        menu.push(
+        device_submenu.push(
             StandardItem {
                 label: "Devices".to_string(),
                 enabled: false,
@@ -102,11 +102,11 @@ impl ksni::Tray for Tray {
             .into(),
         );
 
-        menu.push(MenuItem::Separator);
+        device_submenu.push(MenuItem::Separator);
 
         for device in &self.state.devices {
             let local_device = device.clone();
-            menu.push(
+            device_submenu.push(
                 CheckmarkItem {
                     label: device.name.clone(),
                     checked: device.is_on(),
@@ -125,6 +125,15 @@ impl ksni::Tray for Tray {
                 StandardItem {
                     label: "No devices found".to_string(),
                     enabled: false,
+                    ..Default::default()
+                }
+                .into(),
+            );
+        } else {
+            menu.push(
+                SubMenu {
+                    label: "Devices".to_string(),
+                    submenu: device_submenu,
                     ..Default::default()
                 }
                 .into(),
