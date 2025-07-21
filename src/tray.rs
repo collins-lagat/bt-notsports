@@ -111,7 +111,7 @@ impl ksni::Tray for Tray {
             let mut name = device.name.clone();
 
             if let Some(percentage) = device.battery_percentage {
-                name = format!("{} ({})%", name, percentage);
+                name = format!("{} ({}%)", name, percentage);
             }
 
             device_list.push(
