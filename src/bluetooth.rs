@@ -37,8 +37,6 @@ pub struct BTDevice {
     pub name: String,
     pub address: Address,
     pub status: BTDeviceStatus,
-    pub is_paired: bool,
-    pub is_trusted: bool,
     pub battery_percentage: Option<u8>,
 }
 
@@ -48,13 +46,12 @@ impl BTDevice {
     }
 
     pub async fn from_device(device: &bluer::Device) -> Self {
-        let (mut name, is_paired, is_trusted, is_connected, battery_percentage) = futures::join!(
+        let (mut name, is_paired, is_connected, battery_percentage) = futures::join!(
             device.name().map(|res| res
                 .ok()
                 .flatten()
                 .unwrap_or_else(|| device.address().to_string())),
             device.is_paired().map(Result::unwrap_or_default),
-            device.is_trusted().map(Result::unwrap_or_default),
             device.is_connected().map(Result::unwrap_or_default),
             device.battery_percentage().map(|res| res.ok().flatten()),
         );
@@ -76,8 +73,6 @@ impl BTDevice {
             address: device.address(),
             status,
             battery_percentage,
-            is_paired,
-            is_trusted,
         }
     }
 }
