@@ -2,6 +2,10 @@
 
 A simple Bluetooth applet for Linux
 
+## Demo
+
+https://github.com/user-attachments/assets/dc616cff-b3de-485c-94dc-358e16b457a8
+
 ## Installation
 
 1. Build the program:
