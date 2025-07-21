@@ -91,18 +91,7 @@ impl ksni::Tray for Tray {
 
         menu.push(MenuItem::Separator);
 
-        menu.push(
-            StandardItem {
-                label: "Scan for Devices".to_string(),
-                activate: Box::new(|this: &mut Self| {
-                    this.send_action(Action::Scan).unwrap();
-                }),
-                ..Default::default()
-            }
-            .into(),
-        );
 
-        menu.push(MenuItem::Separator);
 
         menu.push(
             StandardItem {

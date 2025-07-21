@@ -17,7 +17,6 @@ const STATE_CHANGED_FAILED_RETRY_MS: u64 = 5_000;
 pub enum Action {
     ToggleBluetooth,
     ToggleDevice(BTDevice),
-    Scan,
 }
 
 #[derive(Debug)]
@@ -246,7 +245,7 @@ pub async fn init_bluetooth(app_tx: Sender<AppEvent>) -> Result<Sender<BTEvent>>
                         error!("Failed to send BTState to AppEvent::Response: {e}");
                     };
                 }
-                BTEvent::Request { action, mut state } => {
+                BTEvent::Request { action, state } => {
                     match action {
                         Action::ToggleBluetooth => {
                             toggle_bluetooth(&adapter, state.on).await;
@@ -270,7 +269,6 @@ pub async fn init_bluetooth(app_tx: Sender<AppEvent>) -> Result<Sender<BTEvent>>
                         Action::ToggleDevice(device) => {
                             toggle_device(&adapter, &device.address, device.is_on()).await
                         }
-                        Action::Scan => scan_for_devices(&mut state, &app_tx).await,
                     }
 
                     if let Ok(state) = build_state(&adapter).await {
