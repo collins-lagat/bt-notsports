@@ -183,7 +183,29 @@ async fn toggle_device(adapter: &Adapter, address: &Address, on: bool) {
     }
 }
 
-async fn scan_for_devices(state: &mut BTState, app_tx: &Sender<AppEvent>) {}
+async fn listen_for_device_changes(app_tx: Sender<AppEvent>, adapter: Adapter) {
+    let mut count = 0;
+    let mut interval = tokio::time::interval(Duration::from_secs(1));
+    let mut stream = loop {
+        if let Ok(stream) = adapter.discover_devices_with_changes().await {
+            break stream;
+        };
+
+        interval.tick().await;
+
+        if count > 10 {
+            return;
+        }
+
+        count += 1;
+    };
+
+    while (stream.next().await).is_some() {
+        if let Ok(state) = build_state(&adapter).await {
+            let _ = app_tx.send(AppEvent::Response(state)).await;
+        }
+    }
+}
 
 pub async fn init_bluetooth(app_tx: Sender<AppEvent>) -> Result<Sender<BTEvent>> {
     let (tx, mut rx) = channel::<BTEvent>(32);
@@ -236,6 +258,8 @@ pub async fn init_bluetooth(app_tx: Sender<AppEvent>) -> Result<Sender<BTEvent>>
     let state = build_state(&adapter).await?;
 
     tx.send(BTEvent::Init(state)).await?;
+
+    tokio::spawn(listen_for_device_changes(app_tx.clone(), adapter.clone()));
 
     tokio::spawn(async move {
         while let Some(action) = rx.recv().await {
