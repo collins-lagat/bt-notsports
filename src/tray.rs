@@ -106,9 +106,15 @@ impl ksni::Tray for Tray {
 
         for device in &self.state.devices {
             let local_device = device.clone();
+            let mut name = device.name.clone();
+
+            if let Some(percentage) = device.battery_percentage {
+                name = format!("{} ({})%", name, percentage);
+            }
+
             device_submenu.push(
                 CheckmarkItem {
-                    label: device.name.clone(),
+                    label: name,
                     checked: device.is_on(),
                     activate: Box::new(move |this: &mut Self| {
                         this.send_action(Action::ToggleDevice(local_device.clone()))
