@@ -79,6 +79,7 @@ impl ksni::Tray for Tray {
             .state
             .paired_devices
             .iter()
+            .filter(|device| device.is_on())
             .fold("".to_string(), |acc, item| {
                 format!("{}{}, ", acc, item.name)
             })
