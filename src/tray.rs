@@ -74,6 +74,20 @@ impl ksni::Tray for Tray {
         icons
     }
 
+    fn title(&self) -> String {
+        let connected_devices: String = self
+            .state
+            .paired_devices
+            .iter()
+            .fold("".to_string(), |acc, item| {
+                format!("{}{}, ", acc, item.name)
+            })
+            .trim_end_matches(", ")
+            .to_string();
+
+        format!("Connected to: {}", connected_devices)
+    }
+
     fn menu(&self) -> Vec<MenuItem<Self>> {
         let mut menu = vec![];
 
