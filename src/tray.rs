@@ -75,18 +75,26 @@ impl ksni::Tray for Tray {
     }
 
     fn title(&self) -> String {
-        let connected_devices: String = self
+        let connected_devices = self
             .state
             .paired_devices
             .iter()
             .filter(|device| device.is_on())
+            .collect::<Vec<_>>();
+
+        if connected_devices.is_empty() {
+            return "No devices connected".to_string();
+        }
+
+        let connected_devices_string: String = connected_devices
+            .iter()
             .fold("".to_string(), |acc, item| {
                 format!("{}{}, ", acc, item.name)
             })
             .trim_end_matches(", ")
             .to_string();
 
-        format!("Connected to: {}", connected_devices)
+        format!("Connected to: {}", connected_devices_string)
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
